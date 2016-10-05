@@ -65,7 +65,10 @@
       <js-module src="src/windows/QRScannerEngine.js" name="QRScannerEngine">
           <runs/>
       </js-module>
-      <js-module src="src/windows/VideoCaptureDevice.js" name="VideoCaptureDevice">
+      <js-module src="src/windows/VideoController.js" name="VideoController">
+          <runs/>
+      </js-module>
+      <js-module src="src/windows/DocumentController.js" name="DocumentController">
           <runs/>
       </js-module>
       <config-file target="package.appxmanifest" parent="/Package/Capabilities">

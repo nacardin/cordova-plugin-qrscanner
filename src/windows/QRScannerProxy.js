@@ -1,21 +1,21 @@
-const QRScanner = require('./QRScanner');
+const QRScannerEngine = require('./QRScannerEngine');
 
-let exports = {};
+let proxy = {};
 
-let qrScanner = QRScanner();
+let qrScannerEngine = QRScannerEngine();
 
 function wrap(fn) {
   return function (successCallback, errorCallback, strInput) {
-    fn(strInput).then(successCallback, errorCallback);
+    fn.call(qrScannerEngine, strInput).then(successCallback, errorCallback);
   }
 }
 
-for (let property in qrScanner) {
-  if (typeof qrScanner[property] == "function") {
-    exports[property] = wrap(qrScanner[property])
+for (let property in qrScannerEngine) {
+  if (typeof qrScannerEngine[property] == "function") {
+    proxy[property] = wrap(qrScannerEngine[property])
   }
 }
 
-module.exports = exports;
+module.exports = proxy;
 
-cordova.commandProxy.add("QRScanner", exports);
+cordova.commandProxy.add("QRScanner", proxy);

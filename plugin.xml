@@ -60,7 +60,13 @@
           </feature>
       </config-file>
       <js-module src="src/windows/QRScannerProxy.js" name="QRScannerProxy">
-          <merges target=""/>
+          <runs/>
+      </js-module>
+      <js-module src="src/windows/QRScannerEngine.js" name="QRScannerEngine">
+          <runs/>
+      </js-module>
+      <js-module src="src/windows/VideoCaptureDevice.js" name="VideoCaptureDevice">
+          <runs/>
       </js-module>
       <config-file target="package.appxmanifest" parent="/Package/Capabilities">
         <DeviceCapability Name="webcam" />

@@ -1,6 +1,7 @@
+  const barcodeReader = require('./barcodeReader');
   const Capture = Windows.Media.Capture;
 
-  function VideoCapture(videoDeviceId) {
+  function create(videoDeviceId) {
 
     let captureSettings = new Capture.MediaCaptureInitializationSettings();
     captureSettings.streamingCaptureMode = Capture.StreamingCaptureMode.video;
@@ -16,7 +17,9 @@
 
     let videoUrl;
 
-    this.getUrl = function () {
+    let videoCapture = {};
+
+    videoCapture.getUrl = function () {
       return initPromise.then(function () {
         if (!videoUrl) {
           videoUrl = URL.createObjectURL(capture)
@@ -25,7 +28,7 @@
       });
     }
 
-    this.canEnableLight = function () {
+    videoCapture.canEnableLight = function () {
       return initPromise.then(function () {
         if (capture.videoDeviceController) {
           let ctrl = capture.videoDeviceController;
@@ -36,8 +39,8 @@
       });
     }
 
-    this.enableLight = function () {
-      return this.canEnableLight().then(function (canEnableLight) {
+    videoCapture.enableLight = function () {
+      return videoCapture.canEnableLight().then(function (canEnableLight) {
         if (!canEnableLight) {
           return false;
         }
@@ -65,8 +68,8 @@
       });
     }
 
-    this.disableLight = function () {
-      return this.canEnableLight().then(function (canEnableLight) {
+    videoCapture.disableLight = function () {
+      return videoCapture.canEnableLight().then(function (canEnableLight) {
         if (!canEnableLight || !capture.videoDeviceController) {
           return;
         }
@@ -86,27 +89,32 @@
     }
 
 
-    this.startPreview = function () {
+    videoCapture.startPreview = function () {
 
     }
 
-    this.stopPreview = function () {
+    videoCapture.stopPreview = function () {
       return capture.stopRecordAsync();
     }
 
-    this.startScanning = function () {
+    videoCapture.scan = function () {
+      return barcodeReader.readCode().then(function(result) {
+        if(!result) {
+          return Promise.wrapError(errorTypes.SCAN_CANCELED);
+        }
+        return result.text;
+      });
+    }
+
+    videoCapture.cancelScan = function () {
+      barcodeReader.stop();
+    }
+
+    videoCapture.focus = function () {
 
     }
 
-    this.stopScanning = function () {
-
-    }
-
-    this.focus = function () {
-
-    }
-
-    this.destroy = function () {
+    videoCapture.destroy = function () {
       if (initialized) {
         capture.close();
       }
@@ -138,4 +146,6 @@
     });
   }
 
-  module.exports = VideoCapture;
+  module.exports = {
+    create: create
+  };

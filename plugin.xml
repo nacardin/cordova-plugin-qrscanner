@@ -59,16 +59,19 @@
               <param name="windows-package" value="QRScanner" />
           </feature>
       </config-file>
-      <js-module src="src/windows/QRScannerProxy.js" name="QRScannerProxy">
+      <js-module src="src/windows/qrScannerProxy.js" name="qrScannerProxy">
           <runs/>
       </js-module>
-      <js-module src="src/windows/QRScannerEngine.js" name="QRScannerEngine">
+      <js-module src="src/windows/qrScanner.js" name="qrScanner">
           <runs/>
       </js-module>
-      <js-module src="src/windows/VideoCapture.js" name="VideoCapture">
+      <js-module src="src/windows/videoCapture.js" name="videoCapture">
           <runs/>
       </js-module>
-      <js-module src="src/windows/Document.js" name="Document">
+      <js-module src="src/windows/barcodeReader.js" name="barcodeReader">
+          <runs/>
+      </js-module>
+      <js-module src="src/windows/preview.js" name="preview">
           <runs/>
       </js-module>
       <config-file target="package.appxmanifest" parent="/Package/Capabilities">

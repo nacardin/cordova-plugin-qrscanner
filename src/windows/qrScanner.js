@@ -1,5 +1,5 @@
-const VideoCapture = require('./VideoCapture');
-const Document = require('./Document');
+const videoCapture = require('./videoCapture');
+const preview = require('./preview');
 
 const Promise = WinJS.Promise;
 
@@ -20,8 +20,7 @@ const cameraTypes = {
   FRONT: 1
 };
 
-function QRScannerEngine() {
-  var self = this;
+function create() {
 
   var statusFlags = {
     prepared: false,
@@ -40,7 +39,7 @@ function QRScannerEngine() {
   let availableCameras;
   let currentCameraType;
   let currentVideoCapture;
-  let currentDocument = Document();
+  let currentPreview;
 
   function generateStatusResponse() {
     let response = {};
@@ -77,7 +76,7 @@ function QRScannerEngine() {
       if (cameraType === cameraTypes.FRONT && !availableCameras.front) {
         cameraType = cameraTypes.BACK;
       }
-      currentVideoCapture = new VideoCapture(cameraType ? availableCameras.front.id : availableCameras.back.id);
+      currentVideoCapture = videoCapture(cameraType ? availableCameras.front.id : availableCameras.back.id);
       return currentVideoCapture.canEnableLight().then(function (canEnableLight) {
         statusFlags.canEnableLight = canEnableLight;
         currentCameraType = cameraType;
@@ -86,57 +85,75 @@ function QRScannerEngine() {
     return Promise.wrap();
   }
 
-  function createPreview() {
+  function getPreview() {
+    if(currentPreview) {
+      return Promise.wrap(currentPreview);
+    }
     return init().then(function () {
       return currentVideoCapture.getUrl().then(function (videoUrl) {
-        currentDocument.createPreview(videoUrl);
+        currentPreview = preview.create();
+        currentPreview.setVideoUrl(videoUrl);
+        return currentPreview;
       });
     });
   }
 
-  self.getStatus = function () {
+  let qrScanner;
+
+  qrScanner.getStatus = function () {
     return init().then(generateStatusResponse, generateStatusResponse);
   }
 
-  self.prepare = function () {
+  qrScanner.prepare = function () {
     return init().then(generateStatusResponse);
   }
 
-  self.useCamera = function (inputStr) {
+  qrScanner.useCamera = function (inputStr) {
     let cameraType = parseInt(inputStr)
     return initCamera(cameraType).then(function () {
       return generateStatusResponse();
     });
   }
 
-  self.show = function () {
-    return createPreview().then(function () {
-      currentDocument.showPreview();
+  qrScanner.show = function () {
+    return getPreview().then(function (preview) {
+      preview.show();
       statusFlags.showing = true;
       return generateStatusResponse();
     });
   }
 
-  self.hide = function () {
-    currentDocument.hidePreview();
-    statusFlags.showing = false;
+  qrScanner.hide = function () {
+    return getPreview().then(function () {
+      preview.hide();
+      statusFlags.showing = false;
+      return generateStatusResponse();
+    });
+  }
+
+  qrScanner.scan = function () {
+    statusFlags.scanning = true;
+    return currentVideoCapture.scan();
+  }
+
+  qrScanner.cancelScan = function () {
+    statusFlags.scanning = false;
+    currentVideoCapture.cancelScan();
     return generateStatusResponse();
   }
 
-  self.scan = function () {
+  qrScanner.pausePreview = function () {
+    currentPreview.pause();
+    return generateStatusResponse();
   }
 
-  self.cancelScan = function () {
-  }
-
-  self.pausePreview = function () {
-  }
-
-  self.resumePreview = function () {
+  qrScanner.resumePreview = function () {
+    currentPreview.play();
+    return generateStatusResponse();
   }
 
   //on Lumia devices, light functionality may be disabled while plugged in
-  self.enableLight = function () {
+  qrScanner.enableLight = function () {
     return init().then(function () {
       if (statusFlags.lightEnabled) {
         return generateStatusResponse();
@@ -154,7 +171,7 @@ function QRScannerEngine() {
     });
   }
 
-  self.disableLight = function () {
+  qrScanner.disableLight = function () {
 
     if (statusFlags.lightEnabled) {
       return currentVideoCapture.disableLight().then(function () {
@@ -167,16 +184,16 @@ function QRScannerEngine() {
 
   }
 
-  self.openSettings = function () {
+  qrScanner.openSettings = function () {
     return Promise.wrapError(errorTypes.OPEN_SETTINGS_UNAVAILABLE);
   }
 
-  self.destroy = function () {
-    currentDocument.destroyPreview();
+  qrScanner.destroy = function () {
+    currentPreview.destroy();
   }
+
+  return qrScanner;
 
 }
 
-module.exports = function () {
-  return new QRScannerEngine();
-};
+module.exports = create();

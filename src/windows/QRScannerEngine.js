@@ -1,24 +1,24 @@
-  const VideoCapture = require('./VideoCapture');
-  const Document = require('./Document');
+const VideoCapture = require('./VideoCapture');
+const Document = require('./Document');
 
-  const Promise = WinJS.Promise;
+const Promise = WinJS.Promise;
 
-  const errorTypes = {
-    UNEXPECTED_ERROR: 0,
-    CAMERA_ACESS_DENIED: 1,
-    CAMERA_ACCESS_RESTRICTED: 2,
-    BACK_CAMERA_UNAVAILABLE: 3,
-    FRONT_CAMERA_UNAVAILABLE: 4,
-    CAMERA_UNAVAILABLE: 5,
-    SCAN_CANCELED: 6,
-    LIGHT_UNAVAILABLE: 7,
-    OPEN_SETTINGS_UNAVAILABLE: 8
-  };
+const errorTypes = {
+  UNEXPECTED_ERROR: 0,
+  CAMERA_ACESS_DENIED: 1,
+  CAMERA_ACCESS_RESTRICTED: 2,
+  BACK_CAMERA_UNAVAILABLE: 3,
+  FRONT_CAMERA_UNAVAILABLE: 4,
+  CAMERA_UNAVAILABLE: 5,
+  SCAN_CANCELED: 6,
+  LIGHT_UNAVAILABLE: 7,
+  OPEN_SETTINGS_UNAVAILABLE: 8
+};
 
-  const cameraTypes = {
-    BACK: 0,
-    FRONT: 1
-  };
+const cameraTypes = {
+  BACK: 0,
+  FRONT: 1
+};
 
 function QRScannerEngine() {
   var self = this;
@@ -95,7 +95,7 @@ function QRScannerEngine() {
   }
 
   self.getStatus = function () {
-    return init().then(generateStatusResponse);
+    return init().then(generateStatusResponse, generateStatusResponse);
   }
 
   self.prepare = function () {

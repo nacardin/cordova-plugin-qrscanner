@@ -6,7 +6,9 @@ let qrScannerEngine = QRScannerEngine();
 
 function wrap(fn) {
   return function (successCallback, errorCallback, strInput) {
-    fn.call(qrScannerEngine, strInput).then(successCallback, errorCallback);
+    fn.call(qrScannerEngine, strInput).then(successCallback, function (errorCode) {
+      errorCallback(errorCode.toString() || '0');
+    });
   }
 }
 

@@ -69,12 +69,9 @@ namespace WinRTBarcodeReader
         /// <param name="capture">MediaCapture instance.</param>
         /// <param name="width">Capture frame width.</param>
         /// <param name="height">Capture frame height.</param>
-        public void Init(MediaCapture capture, uint width, uint height)
+        public void Init()
         {
-            this.capture = capture;
             encodingProps = ImageEncodingProperties.CreateJpeg();
-            encodingProps.Width = width;
-            encodingProps.Height = height;
 
             barcodeReader = new BarcodeReader {
                 Options = {
@@ -93,8 +90,9 @@ namespace WinRTBarcodeReader
         /// Perform async MediaCapture analysis and searches for barcode.
         /// </summary>
         /// <returns>IAsyncOperation object</returns>
-        public IAsyncOperation<Result> ReadCode()
+        public IAsyncOperation<Result> ReadCode(MediaCapture capture)
         {
+            this.capture = capture;
             return this.Read().AsAsyncOperation();
         }
 

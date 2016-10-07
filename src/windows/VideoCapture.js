@@ -1,4 +1,5 @@
   const barcodeReader = new WinRTBarcodeReader.Reader();
+  barcodeReader.init();
 
   const Capture = Windows.Media.Capture;
   const FocusMode = Windows.Media.Devices.FocusMode;
@@ -173,8 +174,7 @@
     }
 
     videoCapture.scan = function () {
-      barcodeReader.init(capture, captureSettings.width, captureSettings.height);
-      return barcodeReader.readCode();
+      return barcodeReader.readCode(capture);
     }
 
     videoCapture.cancelScan = function () {

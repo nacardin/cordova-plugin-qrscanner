@@ -1,3 +1,4 @@
+
 const videoCapture = require('./videoCapture');
 const preview = require('./preview');
 
@@ -51,13 +52,14 @@ function create() {
   let currentPreview;
 
   let resolveScanReceptical, rejectScanReceptical;
+  let resolveCancelPreviousScan;
 
   function onScanResult (result) {
     if (result) {
       statusFlags.scanning = false;
       resolveScanReceptical(result.text);
-    } else if(!statusFlags.scanning) {
-      rejectScanReceptical(errorTypes.SCAN_CANCELED);
+    } else if (resolveCancelPreviousScan) {
+      resolveCancelPreviousScan();
     }
   }
 
@@ -102,18 +104,19 @@ function create() {
         cameraType = cameraTypes.BACK;
       }
 
+      let cancelPreviousScan;
       if (statusFlags.scanning) {
+        cancelPreviousScan = new Promise(function (resolve, reject) {
+          resolveCancelPreviousScan = resolve;
+        });
         currentVideoCapture.cancelScan();
       }
 
       return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
         currentVideoCapture = videoCapture;
 
-
-
-
-        if(statusFlags.scanning) {
-          currentVideoCapture.scan().then(onScanResult);
+        if (statusFlags.scanning) {
+          cancelPreviousScan.then(currentVideoCapture.scan).then(onScanResult);
         }
 
         return Promise.join({
@@ -178,21 +181,39 @@ function create() {
     });
   }
 
-  qrScanner.scan = function () {
-    if (statusFlags.scanning) {
-      currentVideoCapture.cancelScan();
-    }
+  function doScan() {
     statusFlags.scanning = true;
 
 
-    let scanReceptical = new Promise(function(resolve, reject) {
+    let scanReceptical = new Promise(function (resolve, reject) {
       resolveScanReceptical = resolve;
       rejectScanReceptical = reject;
     });
-
-    init().then(currentVideoCapture.scan).then(onScanResult);
+    currentVideoCapture.scan().then(onScanResult);
 
     return scanReceptical;
+  }
+
+  qrScanner.scan = function () {
+
+    return init().then(function () {
+      if (statusFlags.scanning) {
+        currentVideoCapture.cancelScan();
+        cancelPreviousScan = new Promise(function (resolve, reject) {
+          resolveCancelPreviousScan = resolve;
+        });
+
+        return cancelPreviousScan.then(function () {
+          rejectScanReceptical(errorTypes.SCAN_CANCELED);
+          return doScan();
+        });
+
+      }
+
+      return doScan();
+
+    })
+
   }
 
   qrScanner.cancelScan = function () {

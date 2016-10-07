@@ -37,3 +37,4 @@ C:\Users\nicho\Documents\GitHub\cordova-plugin-qrscanner\src\windows\lib\obj\Deb
 C:\Users\nicho\Documents\GitHub\cordova-plugin-qrscanner\src\windows\lib\obj\Debug\qualifiers.txt
 C:\Users\nicho\Documents\GitHub\cordova-plugin-qrscanner\src\windows\lib\obj\Debug\qualifiers.txt.intermediate
 C:\Users\nicho\Documents\GitHub\cordova-plugin-qrscanner\src\windows\lib\obj\Debug\MultipleQualifiersPerDimensionFound.txt
+C:\Users\nicho\Documents\GitHub\cordova-plugin-qrscanner\src\windows\lib\obj\Debug\WinRTBarcodeReader.csprojResolveAssemblyReference.cache

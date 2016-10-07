@@ -49,7 +49,17 @@ function create() {
   let availableCameras;
   let currentVideoCapture;
   let currentPreview;
-  let deferredResolveScanResult;
+
+  let resolveScanReceptical, rejectScanReceptical;
+
+  function onScanResult (result) {
+    if (result) {
+      statusFlags.scanning = false;
+      resolveScanReceptical(result.text);
+    } else if(!statusFlags.scanning) {
+      rejectScanReceptical(errorTypes.SCAN_CANCELED);
+    }
+  }
 
   function generateStatusResponse() {
     let response = {};
@@ -91,14 +101,19 @@ function create() {
       if (cameraType === cameraTypes.FRONT && !availableCameras.front) {
         cameraType = cameraTypes.BACK;
       }
+
+      if (statusFlags.scanning) {
+        currentVideoCapture.cancelScan();
+      }
+
       return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
         currentVideoCapture = videoCapture;
 
-        if(statusFlags.scanning && deferredResolveScanResult) {
-          currentVideoCapture.scan().then(function(result) {
-            onScanResult(result).then(deferredResolveScanResult);
-            deferredResolveScanResult = null;
-          });
+
+
+
+        if(statusFlags.scanning) {
+          currentVideoCapture.scan().then(onScanResult);
         }
 
         return Promise.join({
@@ -163,27 +178,21 @@ function create() {
     });
   }
 
-  function onScanResult (result) {
-    if(!result) {
-        if (statusFlags.scanning) {
-          return new Promise(function(resolve, reject) {
-            deferredResolveScanResult = resolve;
-          });
-        } else {
-          return Promise.wrapError(errorTypes.SCAN_CANCELED);
-        }
-    }
-    statusFlags.scanning = false;
-    return result.text;
-  }
-
   qrScanner.scan = function () {
     if (statusFlags.scanning) {
       currentVideoCapture.cancelScan();
     }
     statusFlags.scanning = true;
-    let promise = init().then(currentVideoCapture.scan).then(onScanResult);
-    return promise;
+
+
+    let scanReceptical = new Promise(function(resolve, reject) {
+      resolveScanReceptical = resolve;
+      rejectScanReceptical = reject;
+    });
+
+    init().then(currentVideoCapture.scan).then(onScanResult);
+
+    return scanReceptical;
   }
 
   qrScanner.cancelScan = function () {

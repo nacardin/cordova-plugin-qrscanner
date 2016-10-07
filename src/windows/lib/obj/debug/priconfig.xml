@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources targetOsVersion="6.3.0" majorVersion="1">
-  <index root="\" startIndexAt="obj\debug\layout.resfiles">
+  <index root="\" startIndexAt="obj\Debug\layout.resfiles">
     <default>
       <qualifier name="Language" value="en-US" />
       <qualifier name="Contrast" value="standard" />
@@ -14,7 +14,7 @@
     </default>
     <indexer-config type="RESFILES" qualifierDelimiter="." />
   </index>
-  <index root="\" startIndexAt="obj\debug\resources.resfiles">
+  <index root="\" startIndexAt="obj\Debug\resources.resfiles">
     <default>
       <qualifier name="Language" value="en-US" />
       <qualifier name="Contrast" value="standard" />
@@ -30,7 +30,7 @@
     <indexer-config type="RESJSON" initialPath="WinRTBarcodeReader" />
     <indexer-config type="RESFILES" qualifierDelimiter="." />
   </index>
-  <index root="\" startIndexAt="obj\debug\pri.resfiles">
+  <index root="\" startIndexAt="obj\Debug\pri.resfiles">
     <default>
       <qualifier name="Language" value="en-US" />
       <qualifier name="Contrast" value="standard" />

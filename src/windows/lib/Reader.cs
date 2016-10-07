@@ -76,7 +76,12 @@ namespace WinRTBarcodeReader
             encodingProps.Width = width;
             encodingProps.Height = height;
 
-            barcodeReader = new BarcodeReader {Options = {TryHarder = true}};
+            barcodeReader = new BarcodeReader {
+                Options = {
+                    PossibleFormats = new BarcodeFormat[] { BarcodeFormat.QR_CODE },
+                    TryHarder = true
+                }
+            };
             cancelSearch = new CancellationTokenSource();
         }
 

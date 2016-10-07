@@ -1,4 +1,4 @@
-  const barcodeReader = require('./barcodeReader');
+  const barcodeReader = new WinRTBarcodeReader.Reader();
 
   const Capture = Windows.Media.Capture;
   const FocusMode = Windows.Media.Devices.FocusMode;

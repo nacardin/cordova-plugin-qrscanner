@@ -69,7 +69,7 @@ namespace WinRTBarcodeReader
         /// <param name="capture">MediaCapture instance.</param>
         /// <param name="width">Capture frame width.</param>
         /// <param name="height">Capture frame height.</param>
-        public void Init()
+        public Reader()
         {
             encodingProps = ImageEncodingProperties.CreateJpeg();
 
@@ -79,7 +79,6 @@ namespace WinRTBarcodeReader
                     TryHarder = true
                 }
             };
-            cancelSearch = new CancellationTokenSource();
         }
 
         #endregion
@@ -97,6 +96,7 @@ namespace WinRTBarcodeReader
         /// <returns>IAsyncOperation object</returns>
         public IAsyncOperation<Result> ReadCode()
         {
+            cancelSearch = new CancellationTokenSource();
             return this.Read().AsAsyncOperation();
         }
 

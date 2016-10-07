@@ -1,4 +1,3 @@
-
   const Capture = Windows.Media.Capture;
   const FocusMode = Windows.Media.Devices.FocusMode;
   const Promise = WinJS.Promise;
@@ -110,6 +109,12 @@
           videoUrl = URL.createObjectURL(capture)
         }
         return videoUrl;
+      });
+    }
+
+    videoCapture.getCapture = function () {
+      return initPromise.then(function () {
+        return capture;
       });
     }
 

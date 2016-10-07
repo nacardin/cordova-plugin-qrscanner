@@ -1,9 +1,7 @@
-
 const videoCapture = require('./videoCapture');
 const preview = require('./preview');
 
 const barcodeReader = new WinRTBarcodeReader.Reader();
-barcodeReader.init();
 
 const Promise = WinJS.Promise;
 
@@ -98,11 +96,10 @@ function create() {
       return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
         currentVideoCapture = videoCapture;
 
-        barcodeReader.setCapture(videoCapture);
-
         return Promise.join({
           videoUrl: currentVideoCapture.getUrl(),
-          canEnableLight: currentVideoCapture.canEnableLight()
+          canEnableLight: currentVideoCapture.canEnableLight(),
+          capture: currentVideoCapture.getCapture()
         }).then(function (result) {
           if (statusFlags.showing) {
             currentPreview.pause();
@@ -114,6 +111,7 @@ function create() {
           }
           statusFlags.canEnableLight = result.canEnableLight;
           statusFlags.currentCamera = cameraType;
+          barcodeReader.setCapture(result.capture);
         });
       });
 
@@ -162,23 +160,45 @@ function create() {
     });
   }
 
+  let resolveLastScanPromise, rejectLastScanPromise;
+
   qrScanner.scan = function () {
 
-    return init().then(function () {
-      return barcodeReader.readCode().then(function (result) {
-        if (!result) {
-          return Promise.wrapError(errorTypes.SCAN_CANCELED);
-        }
-        return Promise.wrap(result.text);
+    if (statusFlags.scanning) {
+      rejectLastScanPromise(errorTypes.SCAN_CANCELED);
+
+      let lastScanPromise = new Promise(function (resolve, reject) {
+        resolveLastScanPromise = resolve;
+        rejectLastScanPromise = reject;
       });
-      statusFlags.scanning = false;
+
+      return lastScanPromise;
+
+    }
+    statusFlags.scanning = true;
+
+    let lastScanPromise = new Promise(function (resolve, reject) {
+      resolveLastScanPromise = resolve;
+      rejectLastScanPromise = reject;
     });
+
+    init().then(function () {
+      barcodeReader.readCode().then(function (result) {
+        if (!result) {
+          return rejectLastScanPromise(errorTypes.SCAN_CANCELED);
+        }
+        resolveLastScanPromise(result.text);
+        statusFlags.scanning = false;
+      });
+    });
+
+    return lastScanPromise;
 
   }
 
   qrScanner.cancelScan = function () {
     statusFlags.scanning = false;
-    currentVideoCapture.cancelScan();
+    barcodeReader.stop();
     return generateStatusResponse();
   }
 

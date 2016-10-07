@@ -14,7 +14,6 @@
     captureSettings.videoDeviceId = videoDeviceId;
 
     let videoUrl;
-    let scanning;
 
     let capture = new Windows.Media.Capture.MediaCapture();
     let displayInformation = Windows.Graphics.Display.DisplayInformation.getForCurrentView();
@@ -161,10 +160,8 @@
           return;
         }
 
-        let ctrl = capture.videoDeviceController;
-
-        var tc = ctrl.torchControl;
-        var fc = ctrl.flashControl;
+        let tc = capture.videoDeviceController.torchControl;
+        let fc = capture.videoDeviceController.flashControl;
 
         if (tc.enabled) {
           tc.enabled = false;
@@ -177,13 +174,11 @@
 
     videoCapture.scan = function () {
       barcodeReader.init(capture, captureSettings.width, captureSettings.height);
-      scanning = true;
       return barcodeReader.readCode();
     }
 
     videoCapture.cancelScan = function () {
       barcodeReader.stop();
-      scanning = true;
     }
 
     videoCapture.focus = function () {
@@ -210,9 +205,6 @@
 
     videoCapture.destroy = function () {
       return initPromise.then(function () {
-        if (scanning) {
-          videoCapture.cancelScan();
-        }
         displayInformation.removeEventListener("orientationchanged", onOrientationChange);
       });
     }

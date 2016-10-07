@@ -49,6 +49,7 @@ function create() {
   let availableCameras;
   let currentVideoCapture;
   let currentPreview;
+  let deferredResolveScanResult;
 
   function generateStatusResponse() {
     let response = {};
@@ -92,6 +93,14 @@ function create() {
       }
       return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
         currentVideoCapture = videoCapture;
+
+        if(statusFlags.scanning && deferredResolveScanResult) {
+          currentVideoCapture.scan().then(function(result) {
+            onScanResult(result).then(deferredResolveScanResult);
+            deferredResolveScanResult = null;
+          });
+        }
+
         return Promise.join({
           videoUrl: currentVideoCapture.getUrl(),
           canEnableLight: currentVideoCapture.canEnableLight()
@@ -154,17 +163,26 @@ function create() {
     });
   }
 
+  function onScanResult (result) {
+    if(!result) {
+        if (statusFlags.scanning) {
+          return new Promise(function(resolve, reject) {
+            deferredResolveScanResult = resolve;
+          });
+        } else {
+          return Promise.wrapError(errorTypes.SCAN_CANCELED);
+        }
+    }
+    statusFlags.scanning = false;
+    return result.text;
+  }
+
   qrScanner.scan = function () {
     if (statusFlags.scanning) {
       currentVideoCapture.cancelScan();
     }
-    let promise = init().then(currentVideoCapture.scan).then(function (result) {
-      if (!result) {
-        return Promise.wrapError(errorTypes.SCAN_CANCELED);
-      }
-      return result.text;
-    });
     statusFlags.scanning = true;
+    let promise = init().then(currentVideoCapture.scan).then(onScanResult);
     return promise;
   }
 

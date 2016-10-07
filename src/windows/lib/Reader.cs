@@ -86,13 +86,17 @@ namespace WinRTBarcodeReader
 
         #region Public methods
 
+        public void SetCapture(MediaCapture capture)
+        {
+            this.capture = capture;
+        }
+
         /// <summary>
         /// Perform async MediaCapture analysis and searches for barcode.
         /// </summary>
         /// <returns>IAsyncOperation object</returns>
-        public IAsyncOperation<Result> ReadCode(MediaCapture capture)
+        public IAsyncOperation<Result> ReadCode()
         {
-            this.capture = capture;
             return this.Read().AsAsyncOperation();
         }
 

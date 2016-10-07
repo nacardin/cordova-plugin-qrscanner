@@ -1,5 +1,3 @@
-  const barcodeReader = new WinRTBarcodeReader.Reader();
-  barcodeReader.init();
 
   const Capture = Windows.Media.Capture;
   const FocusMode = Windows.Media.Devices.FocusMode;
@@ -171,14 +169,6 @@
           fc.enabled = false;
         }
       });
-    }
-
-    videoCapture.scan = function () {
-      return barcodeReader.readCode(capture);
-    }
-
-    videoCapture.cancelScan = function () {
-      barcodeReader.stop();
     }
 
     videoCapture.focus = function () {

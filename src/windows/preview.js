@@ -1,10 +1,10 @@
   const urlutil = require('cordova/urlutil');
 
-  let currentPreview;
+  let preview;
 
   function create() {
 
-    if (currentPreview) {
+    if (preview) {
       throw 'preview already exists';
     }
 
@@ -21,22 +21,28 @@
 
     let capturePreview = document.createElement("video");
     capturePreview.className = "barcode-scanner-preview";
+    capturePreview.msZoom = true;
     capturePreview.style.height = 'calc(100%)';
     capturePreview.style.top = 'calc(50%)';
-    capturePreview.addEventListener('click', function () {
-      focus();
-    });
 
     capturePreviewFrame.appendChild(capturePreview);
     document.body.appendChild(capturePreviewFrame);
 
-    return {
+    preview = {};
 
-      setVideoUrl: function (videoUrl) {
-        capturePreview.src = videoUrl;
+    preview.setVideoUrl = function (videoUrl) {
+      capturePreview.src = videoUrl;
+    }
+
+    preview.setMirroring = function (isMirrored) {
+      if (isMirrored) {
+        capturePreviewFrame.style.transform = 'scaleY(-1)';
+      } else {
+        capturePreviewFrame.style.transform = '';
       }
+    }
 
-      show: function () {
+    preview.show = function () {
         if (!capturePreviewFrame) {
           return;
         }
@@ -45,7 +51,7 @@
         capturePreviewFrame.style.visibility = 'visible';
       }
 
-      hide: function () {
+    preview.hide = function () {
         if (!capturePreviewFrame) {
           return;
         }
@@ -54,27 +60,27 @@
         capturePreview.pause();
       }
 
-      pause: function() {
+    preview.pause = function() {
         capturePreview.pause();
       }
 
-      resume: function() {
+    preview.resume = function() {
         capturePreview.play();
-      }
+    }
 
-      destroy: function () {
-        if (!currentPreview) {
+    preview.destroy = function () {
+        if (!preview) {
           return;
         }
 
-        currentPreview = null;
-        document.body.removeChild(capturePreviewFrameStyle);
+        preview = null;
+        document.head.removeChild(capturePreviewFrameStyle);
         document.body.removeChild(capturePreviewFrame);
-      }
-
     }
 
-  }
+    return preview;
+
+    }
 
   module.exports = {
     create: create

@@ -54,9 +54,8 @@ function createBarcodeReader() {
 
 }
 
-module.exports = function() {
-  if(Windows.Media.VideoFrame) {
-    return createBarcodeReader();
-  }
-  return new WinRTBarcodeReader.Reader();
-};
+if(Windows.Media.VideoFrame) {
+  module.exports = createBarcodeReader();
+} else {
+  module.exports = new WinRTBarcodeReader.Reader();
+}

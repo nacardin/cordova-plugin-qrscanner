@@ -22,7 +22,7 @@ const cameraTypes = {
 
 function create() {
 
-  var statusFlags = {
+  const defaultStatusFlags = {
     prepared: false,
     authorized: false,
     denied: false,
@@ -33,11 +33,20 @@ function create() {
     lightEnabled: false,
     canOpenSettings: false,
     canEnableLight: false,
-    canChangeCamera: false
+    canChangeCamera: false,
+    currentCamera: cameraTypes.BACK
   };
 
+  function getDefaultStatusFlags() {
+    let statusFlags = {};
+    for (let property in defaultStatusFlags) {
+      statusFlags[property] = defaultStatusFlags[property];
+    }
+    return statusFlags;
+  }
+
+  let statusFlags = getDefaultStatusFlags();
   let availableCameras;
-  let currentCameraType;
   let currentVideoCapture;
   let currentPreview;
 
@@ -51,7 +60,15 @@ function create() {
 
   function init() {
     if (!statusFlags.prepared) {
-      return VideoCapture.getCameras().then(function (cameras) {
+      availableCameras = null;
+      statusFlags.currentCamera = null;
+      currentVideoCapture = null;
+      currentPreview = preview.create();
+      document.body.addEventListener('click', onPreviewClick);
+      return videoCapture.getCameras().then(function (cameras) {
+        if (cameras.back && cameras.front) {
+          statusFlags.canChangeCamera = true;
+        }
         availableCameras = cameras;
         return initCamera(cameraTypes.BACK).then(function () {
           statusFlags.prepared = true;
@@ -69,36 +86,40 @@ function create() {
   }
 
   function initCamera(cameraType) {
-    if (currentCameraType !== cameraType) {
-      if (availableCameras.back && availableCameras.front) {
-        statusFlags.canChangeCamera = true;
-      }
+    if (statusFlags.currentCamera !== cameraType) {
       if (cameraType === cameraTypes.FRONT && !availableCameras.front) {
         cameraType = cameraTypes.BACK;
       }
-      currentVideoCapture = videoCapture(cameraType ? availableCameras.front.id : availableCameras.back.id);
-      return currentVideoCapture.canEnableLight().then(function (canEnableLight) {
-        statusFlags.canEnableLight = canEnableLight;
-        currentCameraType = cameraType;
+      return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
+        currentVideoCapture = videoCapture;
+        return Promise.join({
+          videoUrl: currentVideoCapture.getUrl(),
+          canEnableLight: currentVideoCapture.canEnableLight()
+        }).then(function (result) {
+          if (statusFlags.showing) {
+            currentPreview.pause();
+          }
+          currentPreview.setVideoUrl(result.videoUrl);
+          currentPreview.setMirroring(cameraType === cameraTypes.FRONT);
+          if (statusFlags.showing) {
+            currentPreview.resume();
+          }
+          statusFlags.canEnableLight = result.canEnableLight;
+          statusFlags.currentCamera = cameraType;
+        });
       });
+
     }
     return Promise.wrap();
   }
 
-  function getPreview() {
-    if(currentPreview) {
-      return Promise.wrap(currentPreview);
+  function onPreviewClick(e) {
+    if (statusFlags.showing && currentVideoCapture) {
+      currentVideoCapture.focus();
     }
-    return init().then(function () {
-      return currentVideoCapture.getUrl().then(function (videoUrl) {
-        currentPreview = preview.create();
-        currentPreview.setVideoUrl(videoUrl);
-        return currentPreview;
-      });
-    });
   }
 
-  let qrScanner;
+  let qrScanner = {};
 
   qrScanner.getStatus = function () {
     return init().then(generateStatusResponse, generateStatusResponse);
@@ -109,31 +130,42 @@ function create() {
   }
 
   qrScanner.useCamera = function (inputStr) {
-    let cameraType = parseInt(inputStr)
-    return initCamera(cameraType).then(function () {
-      return generateStatusResponse();
+    return init().then(function () {
+      let cameraType = parseInt(inputStr)
+      return initCamera(cameraType).then(function () {
+        return generateStatusResponse();
+      });
     });
   }
 
   qrScanner.show = function () {
-    return getPreview().then(function (preview) {
-      preview.show();
+    return init().then(function (preview) {
+      currentPreview.show();
       statusFlags.showing = true;
       return generateStatusResponse();
     });
   }
 
   qrScanner.hide = function () {
-    return getPreview().then(function () {
-      preview.hide();
+    return init().then(function (preview) {
+      currentPreview.hide();
       statusFlags.showing = false;
       return generateStatusResponse();
     });
   }
 
   qrScanner.scan = function () {
+    if (statusFlags.scanning) {
+      currentVideoCapture.cancelScan();
+    }
+    let promise = init().then(currentVideoCapture.scan).then(function (result) {
+      if (!result) {
+        return Promise.wrapError(errorTypes.SCAN_CANCELED);
+      }
+      return result.text;
+    });
     statusFlags.scanning = true;
-    return currentVideoCapture.scan();
+    return promise;
   }
 
   qrScanner.cancelScan = function () {
@@ -148,7 +180,7 @@ function create() {
   }
 
   qrScanner.resumePreview = function () {
-    currentPreview.play();
+    currentPreview.resume();
     return generateStatusResponse();
   }
 
@@ -189,7 +221,12 @@ function create() {
   }
 
   qrScanner.destroy = function () {
-    currentPreview.destroy();
+    statusFlags = getDefaultStatusFlags();
+    if (currentPreview) {
+      document.body.removeEventListener('click', onPreviewClick);
+      currentPreview.destroy();
+    }
+    return generateStatusResponse();
   }
 
   return qrScanner;

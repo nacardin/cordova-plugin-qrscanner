@@ -32,7 +32,8 @@ namespace QRReader
         public Reader()
         {
             encodingProps = ImageEncodingProperties.CreateJpeg();
-            barcodeReader = new BarcodeReader {
+            barcodeReader = new BarcodeReader
+            {
                 Options = {
                     PossibleFormats = new BarcodeFormat[] { BarcodeFormat.QR_CODE },
                     TryHarder = true
@@ -70,7 +71,7 @@ namespace QRReader
 
             return result;
         }
-        
+
         private async Task<Result> GetCameraImage(CancellationToken cancelToken)
         {
             if (cancelToken.IsCancellationRequested)
@@ -100,7 +101,7 @@ namespace QRReader
             var result =
                 await
                     Task.Run(
-                        () => barcodeReader.Decode(pixels, (int) decoder.PixelWidth, (int) decoder.PixelHeight, format),
+                        () => barcodeReader.Decode(pixels, (int)decoder.PixelWidth, (int)decoder.PixelHeight, format),
                         cancelToken);
 
             return result;

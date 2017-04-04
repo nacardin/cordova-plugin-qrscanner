@@ -80,8 +80,16 @@ namespace QRReader
             }
 
             imageStream = new InMemoryRandomAccessStream();
+            
+            var videoFrame = await capture.GetPreviewFrameAsync();
 
-            await capture.CapturePhotoToStreamAsync(encodingProps, imageStream);
+            var bitmap = videoFrame.SoftwareBitmap;
+
+            var buffer = new Windows.Storage.Streams.Buffer(100000);
+            bitmap.CopyToBuffer(buffer);
+
+            await imageStream.ReadAsync(buffer, buffer.Length, InputStreamOptions.None);
+
             await imageStream.FlushAsync();
 
             var decoder = await BitmapDecoder.CreateAsync(imageStream);

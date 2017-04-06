@@ -15,10 +15,8 @@ namespace QRReader
     using System.Threading.Tasks;
 
     using Windows.Foundation;
-    using Windows.Graphics.Imaging;
     using Windows.Media.Capture;
     using Windows.Media.MediaProperties;
-    using Windows.Storage.Streams;
 
     using ZXing;
     public sealed class Reader
@@ -27,7 +25,6 @@ namespace QRReader
         private CancellationTokenSource cancelSearch;
         private MediaCapture capture;
         private ImageEncodingProperties encodingProps;
-        private InMemoryRandomAccessStream imageStream;
 
         public Reader()
         {
@@ -78,38 +75,15 @@ namespace QRReader
             {
                 throw new OperationCanceledException(cancelToken);
             }
-
-            imageStream = new InMemoryRandomAccessStream();
             
             var videoFrame = await capture.GetPreviewFrameAsync();
 
-            var bitmap = videoFrame.SoftwareBitmap;
-
-            var buffer = new Windows.Storage.Streams.Buffer(100000);
-            bitmap.CopyToBuffer(buffer);
-
-            await imageStream.ReadAsync(buffer, buffer.Length, InputStreamOptions.None);
-
-            await imageStream.FlushAsync();
-
-            var decoder = await BitmapDecoder.CreateAsync(imageStream);
-
-            byte[] pixels =
-                (await
-                    decoder.GetPixelDataAsync(BitmapPixelFormat.Rgba8,
-                        BitmapAlphaMode.Ignore,
-                        new BitmapTransform(),
-                        ExifOrientationMode.IgnoreExifOrientation,
-                        ColorManagementMode.DoNotColorManage)).DetachPixelData();
-
-            const BitmapFormat format = BitmapFormat.RGB32;
-
-            imageStream.Dispose();
-
+            var luminanceSource = new SoftwareBitmapLuminanceSource(videoFrame.SoftwareBitmap);
+            
             var result =
                 await
                     Task.Run(
-                        () => barcodeReader.Decode(pixels, (int)decoder.PixelWidth, (int)decoder.PixelHeight, format),
+                        () => barcodeReader.Decode(luminanceSource),
                         cancelToken);
 
             return result;

@@ -11,10 +11,13 @@
 namespace QRReader
 {
     using System;
+    using System.Runtime.InteropServices;
     using System.Threading;
     using System.Threading.Tasks;
 
     using Windows.Foundation;
+    using Windows.Graphics.Imaging;
+    using Windows.Media;
     using Windows.Media.Capture;
     using Windows.Media.MediaProperties;
 
@@ -75,15 +78,18 @@ namespace QRReader
             {
                 throw new OperationCanceledException(cancelToken);
             }
-            
-            var videoFrame = await capture.GetPreviewFrameAsync();
 
-            var luminanceSource = new SoftwareBitmapLuminanceSource(videoFrame.SoftwareBitmap);
+            var previewProperties = this.capture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoPreview) as VideoEncodingProperties;
+
+            var videoFrameConfig = new VideoFrame(BitmapPixelFormat.Bgra8, (int)previewProperties.Width, (int)previewProperties.Height);
+
+            var videoFrame = await capture.GetPreviewFrameAsync(videoFrameConfig);
+            
             
             var result =
                 await
                     Task.Run(
-                        () => barcodeReader.Decode(luminanceSource),
+                        () => barcodeReader.Decode(videoFrame.SoftwareBitmap),
                         cancelToken);
 
             return result;

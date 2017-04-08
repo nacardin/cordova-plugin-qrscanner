@@ -1,6 +1,7 @@
 const urlutil = require('cordova/urlutil');
 
-let preview;
+let _ = {
+};
 
 function initialize() {
 
@@ -24,70 +25,73 @@ function initialize() {
   capturePreviewFrame.appendChild(capturePreview);
   document.body.appendChild(capturePreviewFrame);
 
-  preview = {
+  _.preview = {
+    capturePreviewFrameStyle: capturePreviewFrameStyle,
     capturePreviewFrame: capturePreviewFrame,
     capturePreview: capturePreview
   };
 
 }
 
-function destroy() {
-  document.head.removeChild(capturePreviewFrameStyle);
-  document.body.removeChild(capturePreviewFrame);
-
-  delete preview;
-}
-
 function ensurePreviewInitialized() {
-  if (!preview) initialize();
+  if (!_.preview) initialize();
 }
 
 exports.setVideoUrl = function (videoUrl) {
   ensurePreviewInitialized();
-  capturePreview.src = videoUrl;
+  _.preview.capturePreview.src = videoUrl;
 }
 
 exports.setMirroring = function (isMirrored) {
   ensurePreviewInitialized();
   if (isMirrored) {
-    capturePreviewFrame.style.transform = 'scaleY(-1)';
+    _.preview.capturePreviewFrame.style.transform = 'scaleY(-1)';
   } else {
-    capturePreviewFrame.style.transform = '';
+    _.preview.capturePreviewFrame.style.transform = '';
   }
 }
 
 exports.show = function () {
   ensurePreviewInitialized();
-  if (!capturePreviewFrame) {
+  if (!_.preview.capturePreviewFrame) {
     return;
   }
 
-  capturePreview.play();
-  capturePreviewFrame.style.visibility = 'visible';
+  _.preview.capturePreview.play();
+  _.preview.capturePreviewFrame.style.visibility = 'visible';
 }
 
 exports.hide = function () {
   ensurePreviewInitialized();
-  if (!capturePreviewFrame) {
+  if (!_.preview.capturePreviewFrame) {
     return;
   }
 
-  capturePreviewFrame.style.visibility = 'hidden';
-  capturePreview.pause();
+  _.preview.capturePreviewFrame.style.visibility = 'hidden';
+  _.preview.capturePreview.pause();
 }
 
 exports.pause = function () {
   ensurePreviewInitialized();
-  capturePreview.pause();
+  _.preview.capturePreview.pause();
 }
 
 exports.resume = function () {
   ensurePreviewInitialized();
-  capturePreview.play();
+  _.preview.capturePreview.play();
+}
+
+exports.isPlaying = function () {
+  if (!_.preview) return false;
+  return !_.preview.capturePreview.paused;
 }
 
 exports.destroy = function () {
-  if (preview) destroy();
+  if (_.preview) {
+    document.head.removeChild(_.preview.capturePreviewFrameStyle);
+    document.body.removeChild(_.preview.capturePreviewFrame);
+    delete _.preview;
+  }
 }
 
 module.exports = exports;

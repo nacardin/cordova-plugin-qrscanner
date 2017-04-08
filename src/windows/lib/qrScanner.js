@@ -49,7 +49,13 @@ function resetStatusFlags() {
   return statusFlags;
 }
 
-resetStatusFlags();
+function reset() {
+  document.body.removeEventListener('click', onPreviewClick);
+  preview.destroy();
+  currentVideoCapture = null;
+  availableCameras = null;
+  resetStatusFlags();
+}
 
 function generateStatusResponse() {
   let response = {};
@@ -61,23 +67,18 @@ function generateStatusResponse() {
 
 function init() {
   if (!statusFlags.prepared) {
-    availableCameras = null;
-    currentVideoCapture = null;
     document.body.addEventListener('click', onPreviewClick);
     return videoCapture.getCameras().then(function (cameras) {
       if (cameras.back && cameras.front) {
         statusFlags.canChangeCamera = true;
       }
+      if (!cameras.back && !cameras.front) {
+        return Promise.wrapError(errorTypes.CAMERA_UNAVAILABLE);
+      }
       availableCameras = cameras;
-      return initCamera(cameraTypes.BACK).then(function () {
+      return initCamera().then(function () {
         statusFlags.prepared = true;
         statusFlags.authorized = true;
-      }, function (error) {
-        if (error.message.indexOf('Access is denied') > -1) {
-          statusFlags.denied = true;
-          return Promise.wrapError(errorTypes.CAMERA_ACESS_DENIED);
-        }
-        return Promise.wrapError(errorTypes.UNEXPECTED_ERROR);
       });
     });
   }
@@ -85,35 +86,46 @@ function init() {
 }
 
 function initCamera(cameraType) {
-  if (statusFlags.currentCamera !== cameraType) {
-    if (cameraType === cameraTypes.FRONT && !availableCameras.front) {
+  if (cameraType === cameraTypes.BACK && !availableCameras.back) {
+    return Promise.wrapError(errorTypes.BACK_CAMERA_UNAVAILABLE);
+  }
+  if (cameraType === cameraTypes.FRONT && !availableCameras.front) {
+    return Promise.wrapError(errorTypes.FRONT_CAMERA_UNAVAILABLE);
+  }
+  if (!cameraType) {
+    if (availableCameras.front) {
+      cameraType = cameraTypes.FRONT;
+    }
+    if (availableCameras.back) {
       cameraType = cameraTypes.BACK;
     }
-
-    return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
-      currentVideoCapture = videoCapture;
-
-      return Promise.join({
-        videoUrl: currentVideoCapture.getUrl(),
-        canEnableLight: currentVideoCapture.canEnableLight(),
-        capture: currentVideoCapture.getCapture()
-      }).then(function (result) {
-        if (statusFlags.showing) {
-          preview.pause();
-        }
-        preview.setVideoUrl(result.videoUrl);
-        preview.setMirroring(cameraType === cameraTypes.FRONT);
-        if (statusFlags.showing) {
-          preview.resume();
-        }
-        statusFlags.canEnableLight = result.canEnableLight;
-        statusFlags.currentCamera = cameraType;
-        barcodeReader.setCapture(result.capture);
-      });
-    });
-
   }
-  return Promise.wrap();
+  return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
+    if (currentVideoCapture === videoCapture) {
+      return;
+    }
+    currentVideoCapture = videoCapture;
+
+    let videoUrl = currentVideoCapture.getUrl();
+    if (statusFlags.showing) {
+      preview.pause();
+    }
+    preview.setVideoUrl(videoUrl);
+    preview.setMirroring(cameraType === cameraTypes.FRONT);
+    if (statusFlags.showing) {
+      preview.resume();
+    }
+    statusFlags.canEnableLight = currentVideoCapture.canEnableLight;
+    statusFlags.currentCamera = cameraType;
+    barcodeReader.setCapture(currentVideoCapture.capture);
+
+  }, function (error) {
+    if (error.message.indexOf('Access is denied') > -1) {
+      statusFlags.denied = true;
+      return Promise.wrapError(errorTypes.CAMERA_ACESS_DENIED);
+    }
+    return Promise.wrapError(errorTypes.UNEXPECTED_ERROR);
+  });
 }
 
 function onPreviewClick(e) {
@@ -125,7 +137,7 @@ function onPreviewClick(e) {
 let qrScanner = {};
 
 qrScanner.getStatus = function () {
-  return generateStatusResponse();
+  return init().then(generateStatusResponse, generateStatusResponse);
 }
 
 qrScanner.prepare = function () {
@@ -133,9 +145,11 @@ qrScanner.prepare = function () {
 }
 
 qrScanner.useCamera = function (inputStr) {
-  let cameraType = parseInt(inputStr);
-  return initCamera(cameraType).then(function () {
-    return generateStatusResponse();
+  return init().then(function () {
+    let cameraType = parseInt(inputStr);
+    return initCamera(cameraType).then(function () {
+      return generateStatusResponse();
+    });
   });
 }
 
@@ -143,6 +157,7 @@ qrScanner.show = function () {
   return init().then(function () {
     preview.show();
     statusFlags.showing = true;
+    statusFlags.previewing = preview.isPlaying();
     return generateStatusResponse();
   });
 }
@@ -151,6 +166,7 @@ qrScanner.hide = function () {
   return init().then(function () {
     preview.hide();
     statusFlags.showing = false;
+    statusFlags.previewing = false;
     return generateStatusResponse();
   });
 }
@@ -170,7 +186,6 @@ qrScanner.scan = function () {
     return lastScanPromise;
 
   }
-  statusFlags.scanning = true;
 
   let lastScanPromise = new Promise(function (resolve, reject) {
     resolveLastScanPromise = resolve;
@@ -185,13 +200,19 @@ qrScanner.scan = function () {
       resolveLastScanPromise(result.text);
       statusFlags.scanning = false;
     });
+  }, function (error) {
+    statusFlags.scanning = false;
+    return rejectLastScanPromise(error);
   });
+
+  statusFlags.scanning = true;
 
   return lastScanPromise;
 
 }
 
 qrScanner.cancelScan = function () {
+  if (!statusFlags.scanning) return generateStatusResponse();
   statusFlags.scanning = false;
   barcodeReader.stop();
   return generateStatusResponse();
@@ -199,11 +220,13 @@ qrScanner.cancelScan = function () {
 
 qrScanner.pausePreview = function () {
   preview.pause();
+  statusFlags.previewing = false;
   return generateStatusResponse();
 }
 
 qrScanner.resumePreview = function () {
   preview.resume();
+  statusFlags.previewing = statusFlags.showing;
   return generateStatusResponse();
 }
 
@@ -244,12 +267,11 @@ qrScanner.openSettings = function () {
 }
 
 qrScanner.destroy = function () {
-  document.body.removeEventListener('click', onPreviewClick);
-  preview.destroy();
-  resetStatusFlags();
+  reset();
   return generateStatusResponse();
 }
 
+reset();
 
 function wrapPromise(fn) {
   return function (successCallback, errorCallback, strInput) {

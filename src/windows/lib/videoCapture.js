@@ -1,47 +1,43 @@
-  const Capture = Windows.Media.Capture;
-  const FocusMode = Windows.Media.Devices.FocusMode;
-  const Promise = WinJS.Promise;
+const Capture = Windows.Media.Capture;
+const FocusMode = Windows.Media.Devices.FocusMode;
+const Promise = WinJS.Promise;
 
-  let currentVideoCapture;
+let currentVideoCapture;
 
-  function create(videoDeviceId) {
+function create(videoDeviceId) {
 
-    let captureSettings = new Capture.MediaCaptureInitializationSettings();
-    captureSettings.streamingCaptureMode = Capture.StreamingCaptureMode.video;
-    captureSettings.photoCaptureSource = Capture.PhotoCaptureSource.videoPreview;
-    captureSettings.videoDeviceId = videoDeviceId;
+  let captureSettings = new Capture.MediaCaptureInitializationSettings();
+  captureSettings.streamingCaptureMode = Capture.StreamingCaptureMode.video;
+  captureSettings.photoCaptureSource = Capture.PhotoCaptureSource.videoPreview;
+  captureSettings.videoDeviceId = videoDeviceId;
 
-    let videoUrl;
+  let videoUrl;
 
-    let capture = new Windows.Media.Capture.MediaCapture();
-    let displayInformation = Windows.Graphics.Display.DisplayInformation.getForCurrentView();
+  let capture = new Windows.Media.Capture.MediaCapture();
+  let displayInformation = Windows.Graphics.Display.DisplayInformation.getForCurrentView();
 
-    let initPromise = capture.initializeAsync(captureSettings);
+  return capture.initializeAsync(captureSettings).then(function () {
+    adjustCaptureOrientation(displayInformation);
+    displayInformation.addEventListener("orientationchanged", onOrientationChange);
 
-    initPromise.then(function () {
-      adjustCaptureOrientation(displayInformation);
-      displayInformation.addEventListener("orientationchanged", onOrientationChange);
-    });
+    let ctrl = capture.videoDeviceController;
+    let canFocus = ctrl.focusControl && ctrl.focusControl.supported;
 
+    if (canFocus && ctrl.focusControl.configure && ctrl.focusControl.supportedFocusModes) {
 
-    canFocus().then(function (canFocus) {
-      let ctrl = capture.videoDeviceController;
-      if (canFocus && ctrl.focusControl.configure && ctrl.focusControl.supportedFocusModes) {
-
-        function supportsFocusMode(mode) {
-          return ctrl.focusControl.supportedFocusModes.indexOf(mode).returnValue;
-        }
-
-        var focusConfig = new Windows.Media.Devices.FocusSettings();
-        focusConfig.autoFocusRange = Windows.Media.Devices.AutoFocusRange.normal;
-        focusConfig.disableDriverFallback = false;
-        if (supportsFocusMode(FocusMode.continuous)) {
-          focusConfig.mode = FocusMode.continuous;
-        } else if (supportsFocusMode(FocusMode.auto)) {
-          focusConfig.mode = FocusMode.auto;
-        }
+      function supportsFocusMode(mode) {
+        return ctrl.focusControl.supportedFocusModes.indexOf(mode).returnValue;
       }
-    });
+
+      var focusConfig = new Windows.Media.Devices.FocusSettings();
+      focusConfig.autoFocusRange = Windows.Media.Devices.AutoFocusRange.normal;
+      focusConfig.disableDriverFallback = false;
+      if (supportsFocusMode(FocusMode.continuous)) {
+        focusConfig.mode = FocusMode.continuous;
+      } else if (supportsFocusMode(FocusMode.auto)) {
+        focusConfig.mode = FocusMode.auto;
+      }
+    }
 
     function onOrientationChange(e) {
       adjustCaptureOrientation(e.target);
@@ -89,130 +85,87 @@
       }
     }
 
-    function canFocus() {
-      return initPromise.then(function () {
-        if (capture.videoDeviceController) {
-          let ctrl = capture.videoDeviceController;
-          return ctrl.focusControl && ctrl.focusControl.supported;
-        }
-        return false;
-      });
-    }
-
     let videoCapture = {
       videoDeviceId: videoDeviceId
     };
 
     videoCapture.getUrl = function () {
-      return initPromise.then(function () {
-        if (!videoUrl) {
-          videoUrl = URL.createObjectURL(capture)
-        }
-        return videoUrl;
-      });
+      if (!videoUrl) {
+        videoUrl = URL.createObjectURL(capture)
+      }
+      return videoUrl;
     }
 
-    videoCapture.getCapture = function () {
-      return initPromise.then(function () {
-        return capture;
-      });
-    }
+    videoCapture.capture = capture;
 
-    videoCapture.canEnableLight = function () {
-      return initPromise.then(function () {
-        if (capture.videoDeviceController) {
-          let ctrl = capture.videoDeviceController;
-          return (ctrl.flashControl && ctrl.flashControl.supported)
-            || (ctrl.torchControl && ctrl.torchControl.supported);
-        }
-        return false;
-      });
-    }
+    videoCapture.canEnableLight = ctrl.torchControl && ctrl.torchControl.supported;
 
     videoCapture.enableLight = function () {
-      return videoCapture.canEnableLight().then(function (canEnableLight) {
-        if (!canEnableLight) {
-          return false;
-        }
+      if (!canEnableLight || !capture.videoDeviceController) {
+        return false;
+      }
 
-        function lightEnabler(lightControl) {
-          if (lightControl && lightControl.supported) {
-            lightControl.enabled = true;
-            if (lightControl.powerSupported) {
-              lightControl.powerPercent = 90;
-            }
-            return true;
+      function lightEnabler(lightControl) {
+        if (lightControl && lightControl.supported) {
+          lightControl.enabled = true;
+          if (lightControl.powerSupported) {
+            lightControl.powerPercent = 90;
           }
-          return false;
-        }
-
-        if (capture.videoDeviceController) {
-          let ctrl = capture.videoDeviceController;
-
-          let flashEnabled = lightEnabler(ctrl.flashControl);
-          let torchEnabled = lightEnabler(ctrl.torchControl);
-
-          return flashEnabled || torchEnabled;
+          return true;
         }
         return false;
-      });
+      }
+
+      return lightEnabler(ctrl.torchControl);
+      return false;
     }
 
     videoCapture.disableLight = function () {
-      return videoCapture.canEnableLight().then(function (canEnableLight) {
-        if (!canEnableLight || !capture.videoDeviceController) {
-          return;
-        }
+      if (!canEnableLight || !capture.videoDeviceController) {
+        return;
+      }
 
-        let tc = capture.videoDeviceController.torchControl;
-        let fc = capture.videoDeviceController.flashControl;
+      let tc = capture.videoDeviceController.torchControl;
 
-        if (tc.enabled) {
-          tc.enabled = false;
-        }
-        if (fc.enabled) {
-          fc.enabled = false;
-        }
-      });
+      if (tc.enabled) {
+        tc.enabled = false;
+      }
     }
 
     videoCapture.focus = function () {
       const OPERATION_IS_IN_PROGRESS = -2147024567;
       const INITIAL_FOCUS_DELAY = 200;
 
-      canFocus().done(function (canFocus) {
-        if (canFocus) {
-          let focusControl = capture.videoDeviceController.focusControl;
-          if (focusControl.focusState !== Windows.Media.Devices.MediaCaptureFocusState.searching) {
-            Promise.timeout(INITIAL_FOCUS_DELAY).done(function(){
-              focusControl.focusAsync().onerror = function (error) {
-                if (error.number !== OPERATION_IS_IN_PROGRESS) {
-                  console.error(error);
-                }
-              };
-            });
+      if (canFocus) {
+        let focusControl = capture.videoDeviceController.focusControl;
+        if (focusControl.focusState !== Windows.Media.Devices.MediaCaptureFocusState.searching) {
+          Promise.timeout(INITIAL_FOCUS_DELAY).done(function () {
+            focusControl.focusAsync().onerror = function (error) {
+              if (error.number !== OPERATION_IS_IN_PROGRESS) {
+                console.error(error);
+              }
+            };
+          });
 
 
-          }
         }
-      });
+      }
     }
 
     videoCapture.destroy = function () {
-      return initPromise.then(function () {
-        displayInformation.removeEventListener("orientationchanged", onOrientationChange);
-      });
+      displayInformation.removeEventListener("orientationchanged", onOrientationChange);
     }
 
     currentVideoCapture = videoCapture;
     return videoCapture;
+  });
 
-  }
+}
 
-  function getCameras() {
-    var Devices = Windows.Devices.Enumeration;
+function getCameras() {
+  var Devices = Windows.Devices.Enumeration;
 
-    return Devices.DeviceInformation.findAllAsync(Devices.DeviceClass.videoCapture)
+  return Devices.DeviceInformation.findAllAsync(Devices.DeviceClass.videoCapture)
     .then(function (cameras) {
 
       if (!cameras || cameras.length === 0) {
@@ -226,24 +179,24 @@
         return camera.enclosureLocation && camera.enclosureLocation.panel === Devices.Panel.front;
       });
 
-      return {
-        back: backCameras[0] || cameras[0],
-        front: frontCameras[0]
-      };
-    });
-  }
+      let camerasFound = {};
 
-  module.exports = {
-    get: function (videoDeviceId) {
-      if (currentVideoCapture) {
-        if (currentVideoCapture.videoDeviceId === videoDeviceId) {
-          return Promise.wrap(currentVideoCapture);
-        }
-        currentVideoCapture.destroy().then(function () {
-          return create(videoDeviceId);
-        });
+      if (backCameras.length > 0) camerasFound.back = backCameras[0];
+      if (frontCameras.length > 0) camerasFound.front = frontCameras[0];
+
+      return camerasFound;
+    });
+}
+
+module.exports = {
+  get: function (videoDeviceId) {
+    if (currentVideoCapture) {
+      if (currentVideoCapture.videoDeviceId === videoDeviceId) {
+        return Promise.wrap(currentVideoCapture);
       }
-      return Promise.wrap(create(videoDeviceId));
-    },
-    getCameras: getCameras
-  };
+      currentVideoCapture.destroy();
+    }
+    return create(videoDeviceId);
+  },
+  getCameras: getCameras
+};

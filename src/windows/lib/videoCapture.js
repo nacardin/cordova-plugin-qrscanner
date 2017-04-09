@@ -8,10 +8,7 @@ function create(videoDeviceId) {
 
   let captureSettings = new Capture.MediaCaptureInitializationSettings();
   captureSettings.streamingCaptureMode = Capture.StreamingCaptureMode.video;
-  captureSettings.photoCaptureSource = Capture.PhotoCaptureSource.videoPreview;
   captureSettings.videoDeviceId = videoDeviceId;
-
-  let videoUrl;
 
   let capture = new Windows.Media.Capture.MediaCapture();
   let displayInformation = Windows.Graphics.Display.DisplayInformation.getForCurrentView();
@@ -86,15 +83,9 @@ function create(videoDeviceId) {
     }
 
     let videoCapture = {
-      videoDeviceId: videoDeviceId
+      videoDeviceId: videoDeviceId,
+      url: URL.createObjectURL(capture)
     };
-
-    videoCapture.getUrl = function () {
-      if (!videoUrl) {
-        videoUrl = URL.createObjectURL(capture)
-      }
-      return videoUrl;
-    }
 
     videoCapture.capture = capture;
 
@@ -154,6 +145,7 @@ function create(videoDeviceId) {
 
     videoCapture.destroy = function () {
       displayInformation.removeEventListener("orientationchanged", onOrientationChange);
+      return Promise.wrap();
     }
 
     currentVideoCapture = videoCapture;
@@ -191,10 +183,9 @@ function getCameras() {
 module.exports = {
   get: function (videoDeviceId) {
     if (currentVideoCapture) {
-      if (currentVideoCapture.videoDeviceId === videoDeviceId) {
-        return Promise.wrap(currentVideoCapture);
-      }
-      currentVideoCapture.destroy();
+      return currentVideoCapture.destroy().then(function () {
+        return create(videoDeviceId);
+      });
     }
     return create(videoDeviceId);
   },

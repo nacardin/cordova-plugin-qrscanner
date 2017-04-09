@@ -100,13 +100,12 @@ function initCamera(cameraType) {
       cameraType = cameraTypes.BACK;
     }
   }
+  preview.setVideoUrl('');
   return videoCapture.get(cameraType ? availableCameras.front.id : availableCameras.back.id).then(function (videoCapture) {
-    if (currentVideoCapture === videoCapture) {
-      return;
-    }
     currentVideoCapture = videoCapture;
 
-    let videoUrl = currentVideoCapture.getUrl();
+    let videoUrl = currentVideoCapture.url;
+
     if (statusFlags.showing) {
       preview.pause();
     }
@@ -115,9 +114,9 @@ function initCamera(cameraType) {
     if (statusFlags.showing) {
       preview.resume();
     }
+    barcodeReader.setCapture(currentVideoCapture.capture);
     statusFlags.canEnableLight = currentVideoCapture.canEnableLight;
     statusFlags.currentCamera = cameraType;
-    barcodeReader.setCapture(currentVideoCapture.capture);
 
   }, function (error) {
     if (error.message.indexOf('Access is denied') > -1) {

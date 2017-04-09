@@ -44,11 +44,11 @@ exports.setVideoUrl = function (videoUrl) {
 
 exports.setMirroring = function (isMirrored) {
   ensurePreviewInitialized();
-  if (isMirrored) {
-    _.preview.capturePreviewFrame.style.transform = 'scaleY(-1)';
-  } else {
-    _.preview.capturePreviewFrame.style.transform = '';
-  }
+  //if (isMirrored) {
+  //  _.preview.capturePreviewFrame.style.transform = 'scaleY(-1)';
+  //} else {
+  //  _.preview.capturePreviewFrame.style.transform = '';
+  //}
 }
 
 exports.show = function () {
